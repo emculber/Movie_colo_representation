@@ -61,7 +61,8 @@ void read_png_file(char *filename) {
   png_read_update_info(png, info);
 
   row_pointers = (png_bytep*)malloc(sizeof(png_bytep) * height);
-  for(int y = 0; y < height; y++) {
+  int y;
+  for(y = 0; y < height; y++) {
     row_pointers[y] = (png_byte*)malloc(png_get_rowbytes(png,info));
   }
 
@@ -106,7 +107,7 @@ void write_png_file(char *filename) {
   png_write_image(png, row_pointers);
   png_write_end(png, NULL);
 
-  for(int y = 0; y < height; y++) {
+  for(y = 0; y < height; y++) {
     free(row_pointers[y]);
   }
   free(row_pointers);
@@ -118,9 +119,11 @@ long avr_red = 0;
 long avr_green = 0;
 long avr_blue = 0;
 void process_png_file() {
-  for(int y = 0; y < height; y++) {
+  int y;
+  int x;
+  for(y = 0; y < height; y++) {
     png_bytep row = row_pointers[y];
-    for(int x = 0; x < width; x++) {
+    for(x = 0; x < width; x++) {
       png_bytep px = &(row[x * 4]);
       avr_red += px[0]*px[0];
       avr_green += px[1]*px[1];
@@ -143,9 +146,9 @@ void process_png_file() {
   avr_blue = avr_blue/(width * height);
   */
   printf("Red:%ld, Green:%ld, Blue:%ld\n", avr_red, avr_green, avr_blue);
-  for(int y = 0; y < height; y++) {
+  for(y = 0; y < height; y++) {
     png_bytep row = row_pointers[y];
-    for(int x = 0; x < width; x++) {
+    for(x = 0; x < width; x++) {
       png_bytep px = &(row[x * 4]);
       px[0] = avr_red;
       px[1] = avr_green;
@@ -165,8 +168,18 @@ int main(int argc, char *argv[]) {
   size_t arglen = strlen(argv[1]);
   dp = opendir(argv[1]);
   int i = 0;
+  int count = 0;
   if (dp != NULL) {
+    DIR *count_dir;
+    count_dir = opendir(argv[1]);
+    struct dirent *file;
+    while ((file = readdir(count_dir))) {
+      count++;
+    }
+    (void) closedir (count_dir);
     while ((ep = readdir(dp))) {
+      i++;
+      printf("Processing Frame:%d/%d  ::  ", i, count);
       //puts (ep->d_name);
       char *fullpath = malloc(arglen + strlen(ep->d_name) + 2);
       if (fullpath == NULL) { /* deal with error and exit */ return 0;}
@@ -178,11 +191,18 @@ int main(int argc, char *argv[]) {
       }
 
       /* use fullpath */
-      printf("Full path of Frame:%s\n", fullpath);
+      printf("Full path of Frame:%s  ::  ", fullpath);
+
+      int y;
+      for(y = 0; y < height; y++) {
+        free(row_pointers[y]);
+      }
+      free(row_pointers);
+
       read_png_file(fullpath);
       process_png_file();
+
       free(fullpath);
-      i++;
     }
     (void) closedir (dp);
     printf("Total Number of frames:%d\n", i);
